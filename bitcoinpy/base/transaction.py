@@ -1,5 +1,5 @@
-from utils.varint import read_varint, encode_varint
-from base.script import Script
+from bitcoinpy.utils.varint import read_varint, encode_varint
+from bitcoinpy.base.script import Script
 from io import BytesIO
 from typing import Union
 import os

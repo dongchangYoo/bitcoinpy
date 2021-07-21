@@ -1,5 +1,5 @@
-from crypto.hashes import hash256
-from base.bytes import BTCBytes
+from bitcoinpy.crypto import hash256
+from bitcoinpy.base import BTCBytes
 
 # import for test below
 import random

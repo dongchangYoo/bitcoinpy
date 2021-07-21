@@ -1,11 +1,10 @@
-from crypto.secp256k1 import G, BitcoinPoint
-from crypto.hashes import hash160
-from utils.bech32 import bech32_decode, bech32_encode
-from utils.base58 import decode_base58_checksum, encode_base58_checksum
+from bitcoinpy.crypto import G, BitcoinPoint
+from bitcoinpy.crypto import hash160
+from bitcoinpy.utils import bech32_decode, bech32_encode
+from bitcoinpy.utils.base58 import decode_base58_checksum, encode_base58_checksum
 
 from unittest import TestCase
 from enum import Enum
-from typing import Union
 
 
 class NetType(Enum):

@@ -1,5 +1,5 @@
-from utils.varint import read_varint, encode_varint
-from base.opcodes import OP_CODE_NAMES
+from bitcoinpy.utils.varint import read_varint, encode_varint
+from bitcoinpy.base.opcodes import OP_CODE_NAMES
 from io import BytesIO
 
 

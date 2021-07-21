@@ -1,4 +1,4 @@
-from crypto.hashes import hash256
+from bitcoinpy.crypto import hash256
 import base58
 BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
