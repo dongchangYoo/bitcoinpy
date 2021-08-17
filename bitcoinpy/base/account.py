@@ -1,6 +1,6 @@
-from bitcoinpy.crypto import G, BitcoinPoint
-from bitcoinpy.crypto import hash160
-from bitcoinpy.utils import bech32_decode, bech32_encode
+from bitcoinpy.crypto.secp256k1 import G, BitcoinPoint
+from bitcoinpy.crypto.hashes import hash160
+from bitcoinpy.utils.bech32 import bech32_decode, bech32_encode
 from bitcoinpy.utils.base58 import decode_base58_checksum, encode_base58_checksum
 
 from unittest import TestCase

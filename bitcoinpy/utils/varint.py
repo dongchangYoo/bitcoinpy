@@ -1,7 +1,8 @@
 from io import BytesIO
-from backend.btc_module.base.bytes import BTCBytes
+from bitcoinpy.base.bytes import BTCBytes
 
 
+# TODO need to test
 def read_varint(s: BytesIO) -> int:
     '''read_varint reads a variable integer from bytes'''
 
