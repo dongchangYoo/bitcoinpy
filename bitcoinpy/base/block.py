@@ -1,4 +1,4 @@
-from header import BTCHeader
+from header import Header
 from merkle_tree import MerkleTree
 
 # import for test below

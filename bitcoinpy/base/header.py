@@ -1,43 +1,26 @@
 from io import BytesIO
-import time
+from unittest import TestCase
+import json
 import hashlib
 
-# import for test below
-from unittest import TestCase
-import os
-import json
 
-
-class BTCHeader:
+class Header:
     def __init__(self, version: bytes, prev_hash: bytes, merkle_root: bytes, _time: bytes, bits: bytes, nonce: bytes, height: int = 0):
-        """ store element by big endian bytes"""
-        self.version = version
-        self.__prev_hash = prev_hash
-        self.merkle_root = merkle_root
-        self.__bits = bits
-        self.__nonce = nonce
-        self.__time = _time
-        self._height = height
+        """ store elements in big endian bytes"""
+        self.__version: bytes = version
+        self.__prev_hash: bytes = prev_hash
+        self.__merkle_root: bytes = merkle_root
+        self.__bits: bytes = bits
+        self.__nonce: bytes = nonce
+        self.__time: bytes = _time
+        self._height: int = height
 
     def __repr__(self):
-        ret = "version: {}\nprev_hash: {}\nmerkle_root: {}\ntime: {}\nbits: {}\nnonce: {}\nheight: {}".format(
-            self.version.hex(), self.__prev_hash.hex(), self.merkle_root.hex(), self.__time.hex(), self.__bits.hex(),
-            self.__nonce.hex(), self.height
-        )
-
-        return ret
-
-    def serialize(self) -> bytes:
-        result = self.version[::-1]
-        result += self.__prev_hash[::-1]
-        result += self.merkle_root[::-1]
-        result += self.__time[::-1]
-        result += self.__bits[::-1]
-        result += self.__nonce[::-1]
-        return result
+        ret = self.to_dict()
+        return json.dumps(ret, indent=4)
 
     @classmethod
-    def parse_from_str(cls, header_str: str):
+    def from_raw_str(cls, header_str: str):
         s = BytesIO(bytes.fromhex(header_str))
         version = s.read(4)
         prev_hash = s.read(32)
@@ -48,7 +31,7 @@ class BTCHeader:
         return cls(version[::-1], prev_hash[::-1], mr[::-1], timestamp[::-1], bits[::-1], nonce[::-1])
 
     @classmethod
-    def parse_from_dict(cls, header_dict: dict):
+    def from_dict(cls, header_dict: dict):
         version_hex = bytes.fromhex(header_dict["versionHex"])
         prev_hash = bytes.fromhex(header_dict["previousblockhash"])
         mr = bytes.fromhex(header_dict["merkleroot"])
@@ -58,19 +41,34 @@ class BTCHeader:
         height = int(header_dict["height"])
         return cls(version_hex, prev_hash, mr, timestamp, bits, nonce, height)
 
-    @classmethod
-    def new_by_elements(cls, version_hex: str, prev_hash: str, merkle_root: str, bits: str, nonce: int = 0, _time: int = None, height: int = 0):
-        """ store element by big endian bytes"""
-        version_hex = bytes.fromhex(version_hex)
-        prev_hash = bytes.fromhex(prev_hash)
-        mr = bytes.fromhex(merkle_root[2:] if merkle_root.startswith("0x") else merkle_root)
-        if _time is None:
-            timestamp = int(time.time()).to_bytes(4, "big")
-        else:
-            timestamp = _time.to_bytes(4, "big")
-        bits = bytes.fromhex(bits)
-        nonce = nonce.to_bytes(4, "big")
-        return cls(version_hex, prev_hash, mr, timestamp, bits, nonce, height)
+    def serialize(self) -> bytes:
+        result = self.__version[::-1]
+        result += self.__prev_hash[::-1]
+        result += self.__merkle_root[::-1]
+        result += self.__time[::-1]
+        result += self.__bits[::-1]
+        result += self.__nonce[::-1]
+        return result
+
+    @property
+    def version(self) -> int:
+        return int.from_bytes(self.__version, "big")
+
+    @property
+    def prev_hash(self) -> str:
+        return self.__prev_hash.hex()
+
+    @property
+    def merkle_root(self) -> str:
+        return self.__merkle_root.hex()
+
+    @property
+    def time(self) -> int:
+        return int.from_bytes(self.__time, "big")
+
+    @property
+    def bits(self) -> int:
+        return int.from_bytes(self.__bits, "big")
 
     @property
     def hash(self) -> bytes:
@@ -80,103 +78,112 @@ class BTCHeader:
         return hashlib.sha256(hashlib.sha256(header_bytes).digest()).digest()[::-1]
 
     @property
-    def bits(self) -> int:
-        return int.from_bytes(self.__bits, "big")
-
-    @bits.setter
-    def bits(self, bits: int):
-        self.__bits = bits.to_bytes(4, byteorder="big")
-
-    @property
     def nonce(self):
         return int.from_bytes(self.__nonce, "big")
-
-    @nonce.setter
-    def nonce(self, nonce: int):
-        self.__nonce = nonce.to_bytes(4, "big")
-
-    @property
-    def prev_hash(self) -> str:
-        return self.__prev_hash.hex()
-
-    @prev_hash.setter
-    def prev_hash(self, prev_hash_big_hex: str):
-        if prev_hash_big_hex.startswith("0x"):
-            self.__prev_hash = bytes.fromhex(prev_hash_big_hex[2:])
-        else:
-            self.__prev_hash = bytes.fromhex(prev_hash_big_hex)
-
-    @property
-    def time(self) -> int:
-        return int.from_bytes(self.__time, "big")
-
-    @time.setter
-    def time(self, time: int):
-        self.__time = time.to_bytes(4, byteorder="big")
 
     @property
     def height(self) -> int:
         return self._height
 
     @property
+    def target(self) -> int:
+        exp = (self.bits & 0xff000000) >> 24
+        coef = self.bits & 0x00ffffff
+        return coef * 256 ** (exp - 3)
+
+    @version.setter
+    def version(self, value: int):
+        if isinstance(value, int):
+            raise Exception("Expected type: {}, but {}".format("int", type(value)))
+        self.__version = value.to_bytes(4, byteorder="big")
+
+    @prev_hash.setter
+    def prev_hash(self, value_big_hex: str):
+        if value_big_hex.startswith("0x"):
+            self.__prev_hash = bytes.fromhex(value_big_hex[2:])
+        else:
+            self.__prev_hash = bytes.fromhex(value_big_hex)
+
+    @merkle_root.setter
+    def merkle_root(self, value_big_hex: str):
+        if value_big_hex.startswith("0x"):
+            self.__merkle_root = bytes.fromhex(value_big_hex[2:])
+        else:
+            self.__merkle_root = bytes.fromhex(value_big_hex)
+
+    @time.setter
+    def time(self, value: int):
+        if isinstance(value, int):
+            raise Exception("Expected type: {}, but {}".format("int", type(value)))
+        self.__time = value.to_bytes(4, byteorder="big")
+
+    @bits.setter
+    def bits(self, value: int):
+        if isinstance(value, int):
+            raise Exception("Expected type: {}, but {}".format("int", type(value)))
+        self.__bits = value.to_bytes(4, byteorder="big")
+
+    @nonce.setter
+    def nonce(self, value: int):
+        if isinstance(value, int):
+            raise Exception("Expected type: {}, but {}".format("int", type(value)))
+        self.__nonce = value.to_bytes(4, "big")
+
     def raw_header_str(self) -> str:
         return self.serialize().hex()
 
     def to_dict(self) -> dict:
         ret = dict()
-        ret["versionHex"] = self.version.hex()
+        ret["versionHex"] = self.__version.hex()
         ret["previousblockhash"] = self.__prev_hash.hex()
-        ret["merkleroot"] = self.merkle_root.hex()
+        ret["merkleroot"] = self.__merkle_root.hex()
         ret["time"] = int.from_bytes(self.__time, "big")
         ret["bits"] = self.__bits.hex()
         ret["nonce"] = int.from_bytes(self.__nonce, "big")
         ret["height"] = self.height
         return ret
 
+    def raw_parse_by_element_name(self, element_name: str) -> bytes:
+        if element_name == "version":
+            return self.__version[::-1]
+        elif element_name == "prev_hash":
+            return self.__prev_hash[::-1]
+        elif element_name == "merkle_root":
+            return self.__merkle_root[::-1]
+        elif element_name == "time":
+            return self.__time[::-1]
+        elif element_name == "bits":
+            return self.__bits[::-1]
+        elif element_name == "nonce":
+            return self.__nonce[::-1]
+        raise Exception("Unknown element")
 
-class BitcoinHeaderTest(TestCase):
-    my_abspath = os.path.dirname(os.path.abspath(__file__))
+    def get_word_of_single_word(self, who: int) -> bytes:
+        raw_header = self.serialize()
+        return raw_header[who * 16: (who + 1) * 16]
 
-    def test_header_constructor1(self):
-        test_jsons = BitcoinHeaderTest.get_test_json("test_data/blocks")
 
-        for test_dict in test_jsons:
-            version: str = test_dict["versionHex"]
-            prev_hash: str = test_dict["previousblockhash"]
-            merkle_root: str = test_dict["merkleroot"]
-            bits: str = test_dict["bits"]
-            nonce: int = test_dict["nonce"]
-            _time: int = test_dict["time"]
+class HeaderTest(TestCase):
+    block645120_str = "00e0ff2fd98ebb2a6aba647793c8851db51c9e79712332ca669a04000000000000000000a3e1762af56223c68eab02df4f65c6e982118f1a4aed87393ad553a221738a2d8b7b435fea071017acc0cd5c"
+    block645120_dict = {
+        'versionHex': '2fffe000',
+        'previousblockhash': '000000000000000000049a66ca322371799e1cb51d85c8937764ba6a2abb8ed9',
+        'merkleroot': '2d8a7321a253d53a3987ed4a1a8f1182e9c6654fdf02ab8ec62362f52a76e1a3',
+        'time': 1598258059,
+        'bits': '171007ea',
+        'nonce': 1556988076,
+        'height': 0
+    }
 
-            expected_hash: str = test_dict["hash"]
+    def test_header_parsing_from_str(self):
+        header = Header.from_raw_str(HeaderTest.block645120_str)
+        self.assertEqual(hex(header.version), "0x" + HeaderTest.block645120_dict["versionHex"])
+        self.assertEqual(header.prev_hash, "000000000000000000049a66ca322371799e1cb51d85c8937764ba6a2abb8ed9")
+        self.assertEqual(header.merkle_root, "2d8a7321a253d53a3987ed4a1a8f1182e9c6654fdf02ab8ec62362f52a76e1a3")
+        self.assertEqual(header.time, HeaderTest.block645120_dict["time"])
+        self.assertEqual(hex(header.bits), "0x" + HeaderTest.block645120_dict["bits"])
+        self.assertEqual(header.nonce, HeaderTest.block645120_dict["nonce"])
 
-            header = Header.new_by_elements(version, prev_hash, merkle_root, bits, nonce, _time)
-            header_hash = header.hash.hex()
-            self.assertEqual(expected_hash, header_hash)
-
-    def test_header_constructor2(self):
-        expected_hash = list()
-        test_jsons = BitcoinHeaderTest.get_test_json("test_data/blocks")
-        for test_dict in test_jsons:
-            expected_hash.append(test_dict["hash"])
-
-        test_jsons = BitcoinHeaderTest.get_test_json("test_data/headers")
-        for test_dict in test_jsons:
-            header_str: str = test_dict["result"]
-            header = Header.parse_from_str(header_str)
-            header_hash = header.hash.hex()
-
-            self.assertTrue(header_hash in expected_hash)
-
-    @staticmethod
-    def get_test_json(test_dir_name: str) -> list:
-        test_file_path = BitcoinHeaderTest.my_abspath + "/" + test_dir_name + "/"
-        test_file_names = os.listdir(test_file_path)
-        if "__init__.py" in test_file_names:
-            test_file_names.remove("__init__.py")
-
-        ret = list()
-        for path in test_file_names:
-            with open(test_file_path + path) as json_data:
-                ret.append(json.load(json_data))
-        return ret
+    def test_header_parsing_from_dict(self):
+        header = Header.from_dict(HeaderTest.block645120_dict)
+        self.assertEqual(header.raw_header_str(), HeaderTest.block645120_str)
