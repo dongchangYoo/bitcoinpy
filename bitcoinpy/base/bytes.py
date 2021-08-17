@@ -1,42 +1,61 @@
 class BTCBytes:
-    def __init__(self, little_bytes: bytes):
-        if not isinstance(little_bytes, bytes):
-            raise Exception("Wrong input format. expected: {}, acture: {}".format("bytes", type(little_bytes)))
-        self._little_bytes = little_bytes  # store as little endian
+    def __init__(self, big_bytes: bytes):
+        if not isinstance(big_bytes, bytes):
+            raise Exception("Wrong input format. expected: {}, acture: {}".format("bytes", type(big_bytes)))
+        self._big_bytes = big_bytes  # store as little endian
 
     def __repr__(self):
-        return "le({})".format(self._little_bytes.hex())
+        return "be({})".format(self. _big_bytes.hex())
 
     def __add__(self, other):
-        return BTCBytes(self.little_bytes + other.little_bytes)
+        if not BTCBytes.type_check(other):
+            raise Exception("other type is not BTCBytes")
+        return BTCBytes(self.bytes_as_be + other.bytes_as_be)
 
     def __eq__(self, other):
-        return self.little_bytes == other.little_bytes
+        if not BTCBytes.type_check(other):
+            raise Exception("other type is not BTCBytes")
+        return self.bytes_as_be == other.bytes_as_be
 
     def __ne__(self, other):
-        return self.little_bytes != other.little_bytes
+        if not BTCBytes.type_check(other):
+            raise Exception("other type is not BTCBytes")
+        return not self == other
+
+    @staticmethod
+    def type_check(other):
+        return True if isinstance(other, BTCBytes) else False
 
     @classmethod
     def from_big_hex(cls, big_hex: str):
-        data = bytes.fromhex(big_hex)[::-1]
+        data = bytes.fromhex(big_hex)
+        return cls(data)
+
+    @classmethod
+    def from_little_hex(cls, little_hex: str):
+        data = bytes.fromhex(little_hex)[::-1]
         return cls(data)
 
     @property
-    def big_bytes(self) -> bytes:
-        return self._little_bytes[::-1]
+    def bytes_as_be(self) -> bytes:
+        """ return big endian bytes """
+        return self._big_bytes
 
     @property
-    def little_bytes(self) -> bytes:
-        return self._little_bytes
+    def bytes_as_le(self) -> bytes:
+        """ return little endian bytes"""
+        return self._big_bytes[::-1]
 
     @property
-    def big_hex(self):
-        return "0x" + self._little_bytes[::-1].hex()
+    def hex_as_be(self):
+        """ return big endian hex """
+        return "0x" + self.bytes_as_be.hex()
 
     @property
-    def little_hex(self):
-        return "0x" + self._little_bytes.hex()
+    def hex_as_le(self):
+        """ return little endian hex """
+        return "0x" + self.bytes_as_le.hex()
 
     @property
     def int(self):
-        return int.from_bytes(self._little_bytes, 'little')
+        return int.from_bytes(self.bytes_as_be, 'little')
