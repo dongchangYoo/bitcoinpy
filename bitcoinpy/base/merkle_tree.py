@@ -1,5 +1,7 @@
-from bitcoinpy.crypto import hash256
-from bitcoinpy.base import BTCBytes
+from typing import Union
+
+from bitcoinpy.crypto.hashes import hash256
+from bitcoinpy.base.bytes import BTCBytes
 
 # import for test below
 import random
@@ -9,16 +11,19 @@ import json
 
 
 class MerkleTree:
-    def __init__(self, leaves_little_endian: list):
-        leaf_len: int = len(leaves_little_endian)
+    def __init__(self, leaves: list):
+        if not isinstance(leaves[0], BTCBytes):
+            raise Exception("Invalid leaf type: expected BTCBytes, but {}".format(type(leaves[0])))
+
+        leaf_len: int = len(leaves)
         if leaf_len < 1:
             self.depth: int = 0
         else:
-            self.depth = len(bin(len(leaves_little_endian) - 1)[2:])  # num of layer:= (bit_len of n-1) + 1
+            self.depth = len(bin(len(leaves) - 1)[2:])  # num of layer:= (bit_len of n-1) + 1
 
         self.layers: list = list()
         # build tree
-        zero_layer: list = [BTCBytes(leaf) for leaf in leaves_little_endian]
+        zero_layer: list = [leaf for leaf in leaves]
         self.layers.append(zero_layer)
         for _ in range(self.depth):
             prev_layer = self.layers[-1]
@@ -29,24 +34,29 @@ class MerkleTree:
                     right: BTCBytes = left  # TODO is deep copied?
                 else:
                     right: BTCBytes = prev_layer[i+1]
-                data = BTCMerkleTree.hash_func(left + right)
+                data = BTCMerkleTree.hash_func(left, right)
                 next_layer.append(data)
             self.layers.append(next_layer)
 
     @classmethod
-    def from_big_hex_list(cls, big_hex_list: list):
-        little_bytes_list: list = [bytes.fromhex(item)[::-1] for item in big_hex_list]
-        return cls(little_bytes_list)
+    def from_big_endian_hex_list(cls, leaves: list):
+        little_leaves = list()
+        for leaf in leaves:
+            little_leaves.append(BTCBytes.from_big_hex(leaf))
+        return cls(little_leaves)
 
     @staticmethod
-    def hash_func(pre: BTCBytes) -> BTCBytes:
-        return BTCBytes(hash256(pre.little_bytes))
+    def hash_func(left: BTCBytes, right: BTCBytes) -> BTCBytes:
+        return BTCBytes.from_little_bytes(hash256(left.bytes_as_le + right.bytes_as_le))
 
     @property
     def root(self) -> BTCBytes:
         if len(self.layers[-1]) == 0:
             return BTCBytes.from_big_hex("0000000000000000000000000000000000000000000000000000000000000000")
         return self.layers[-1][0]
+
+    def get_index_of_leaf(self, leaf: BTCBytes) -> int:
+        return self.layers[0].index(leaf.bytes_as_le)
 
 
 class NodeIndicator:
@@ -55,10 +65,7 @@ class NodeIndicator:
         self._idx = idx
 
     def __eq__(self, other):
-        if self.height == other.height and self.idx == other.idx:
-            return True
-        else:
-            return False
+        return self.height == other.height and self.idx == other.idx
 
     @property
     def height(self):
@@ -78,7 +85,7 @@ class IndicatorQueue:
         self.queue = indicators
         self.cursor = 0
 
-    def pop(self) -> NodeIndicator:
+    def pop(self) -> Union[NodeIndicator, None]:
         if len(self.queue) < 1:  # in empty
             return None
         ret: NodeIndicator = self.queue[self.cursor]
@@ -90,7 +97,7 @@ class IndicatorQueue:
         if not self.included(ind):
             self.queue.append(ind)
 
-    def included(self, ind: NodeIndicator):
+    def included(self, ind: NodeIndicator) -> bool:
         return ind in self.queue
 
     def is_empty(self) -> bool:
@@ -102,13 +109,12 @@ class IndicatorQueue:
 
 
 class BTCMerkleTree(MerkleTree):
-    def __init__(self, leaves_little_bytes: list):
-        super().__init__(leaves_little_bytes)
+    def __init__(self, leaves: list):
+        super().__init__(leaves)
 
     @classmethod
-    def from_big_hex_list(cls, big_hex_list: list):
-        little_bytes_list: list = [bytes.fromhex(item)[::-1] for item in big_hex_list]
-        return cls(little_bytes_list)
+    def from_big_hex_list(cls, big_hex_leaves: list):
+        return super().from_big_endian_hex_list(big_hex_leaves)
 
     def gen_multi_proof_and_flags(self, indices: list):
         # generate multi_proof
@@ -203,7 +209,7 @@ class BTCMerkleTree(MerkleTree):
             else:
                 return Exception("wrong flags in verify")
 
-            next_hash: BTCBytes = BTCMerkleTree.hash_func(left + right)
+            next_hash: BTCBytes = BTCMerkleTree.hash_func(left, right)
             hashes.append(next_hash)
 
         return root == hashes[-1]  # root
@@ -219,7 +225,7 @@ class BTCMerkleTree(MerkleTree):
         else:
             return 0  # has no pair..
 
-    def get_indicator_by_node(self, leaf: str) -> NodeIndicator:
+    def get_indicator_by_node(self, leaf: str) -> Union[NodeIndicator, None]:
         for height, layer in enumerate(self.layers):
             if leaf in layer:
                 idx = layer.index(leaf)
@@ -232,7 +238,7 @@ class BTCMerkleTree(MerkleTree):
     def get_node_by_indicator(self, ind: NodeIndicator) -> BTCBytes:
         return self.get_node(ind.height, ind.idx)
 
-    def get_pair_by_indicator(self, ind: NodeIndicator) -> BTCBytes:
+    def get_pair_by_indicator(self, ind: NodeIndicator) -> Union[BTCBytes, None]:
         target_layer: list = self.layers[ind.height]
         pair_idx = ind.idx + 1 if ind.idx % 2 == 0 else ind.idx - 1
         if pair_idx < len(target_layer):
@@ -240,9 +246,9 @@ class BTCMerkleTree(MerkleTree):
         else:
             return None
 
-    @staticmethod
-    def hash_func(pre: BTCBytes) -> BTCBytes:
-        return BTCBytes(hash256(pre.little_bytes))
+    # @staticmethod
+    # def hash_func(left: BTCBytes, right: BTCBytes) -> BTCBytes:
+    #     return BTCBytes(hash256(left.bytes_as_le + right.bytes_as_le))
 
     @property
     def root(self) -> BTCBytes:
@@ -299,7 +305,8 @@ class MerkleProofFuzzTest(TestCase):
             result = self.multi_prove_and_verify(prover, target_indices)
             self.assertTrue(result)
 
-    def multi_prove_and_verify(self, prover: BTCMerkleTree, target_indices: list) -> bool:
+    @staticmethod
+    def multi_prove_and_verify(prover: BTCMerkleTree, target_indices: list) -> bool:
         proof: list = prover._gen_multi_proof(target_indices)
 
         # generate flag
@@ -308,14 +315,7 @@ class MerkleProofFuzzTest(TestCase):
 
         # verify proof
         target_leaves = [prover.get_node(0, idx) for idx in target_indices]
-        expected_root: BTCBytes = BTCBytes.from_big_hex(prover.root.big_hex)
-        print('data = {}')
-        print("data[\"expected_root\"] =",'\"0x{}\"'.format(expected_root.little_hex) )
-        print("data[\"target_leaves\"] =", ['0x' + x.little_hex for x in target_leaves])
-        print("data[\"proof\"        ] =", ['0x' + x.little_hex for x in proof])
-        print("data[\"flags\"        ] =",'\"0x0{}\"'.format('0'.join([ str(x) for x in flags])) )
-        print("params.append( copy.deepcopy(data) )")
-        # print("flags",     flags )
+        expected_root: BTCBytes = BTCBytes.from_big_hex(prover.root.hex_as_be)
         result = BTCMerkleTree.verify_multi_proof(expected_root, target_leaves, proof, flags)
         return result
 
@@ -334,19 +334,13 @@ class MerkleProofFuzzTest(TestCase):
 
 
 class BitcoinBlockTest(TestCase):
-    my_abspath = os.path.dirname(os.path.abspath(__file__))
 
     def test_merkle_root_new(self):
-        test_file_path = BitcoinBlockTest.my_abspath + "/../test_data/blocks/"
-        test_file_names = os.listdir(test_file_path)
-        if "__init__.py" in test_file_names:
-            test_file_names.remove("__init__.py")
+        data_path = "../test_data/blocks/mainnet_684032.json"
+        with open(data_path) as json_data:
+            test_dict = json.load(json_data)
+            tx_ids: list = test_dict["tx"]
+            expected_merkle_root: BTCBytes = BTCBytes.from_big_hex(test_dict["merkleroot"])
 
-        for path in test_file_names:
-            with open(test_file_path + path) as json_data:
-                test_dict = json.load(json_data)
-                tx_ids: list = test_dict["tx"]
-                expected_merkle_root: str = test_dict["merkleroot"]
-
-                tree = MerkleTree.from_big_hex_list(tx_ids)
-                self.assertEqual(expected_merkle_root, tree.root.big_hex)
+            tree = MerkleTree.from_big_endian_hex_list(tx_ids)
+            self.assertEqual(expected_merkle_root, tree.root)

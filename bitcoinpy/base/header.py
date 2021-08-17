@@ -8,7 +8,7 @@ from bitcoinpy.base.bytes import BTCBytes
 
 class Header:
     def __init__(self, version: bytes, prev_hash: bytes, merkle_root: bytes, _time: bytes, bits: bytes, nonce: bytes, height: int = 0):
-        """ store elements in big endian bytes"""
+        """ all delivered bytes have big endian form """
         self.__version: BTCBytes = BTCBytes(version)
         self.__prev_hash: BTCBytes = BTCBytes(prev_hash)
         self.__merkle_root: BTCBytes = BTCBytes(merkle_root)
