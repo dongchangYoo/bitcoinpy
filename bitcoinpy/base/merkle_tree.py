@@ -180,6 +180,12 @@ class BTCMerkleTree(MerkleTree):
 
     @staticmethod
     def verify_multi_proof(root: BTCBytes, target_leaves: list, proof: list, flags: list):
+        if not isinstance(target_leaves[0], BTCBytes):
+            raise Exception("Invalid target_leaves type: expected {}, but {}".format(type(BTCBytes), type(target_leaves[0])))
+
+        if not isinstance(proof[0], BTCBytes):
+            raise Exception("Invalid proof type: expected {}, but {}".format(type(BTCBytes), type(proof[0])))
+
         total_hashes: int = len(flags)
 
         hashes_pos: int = 0
@@ -258,29 +264,26 @@ class BTCMerkleTree(MerkleTree):
 class MerkleProofFuzzTest(TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        my_abspath = os.path.dirname(os.path.abspath(__file__))
-        test_file_path = my_abspath + "/test_data/blocks/"
-        test_file_names = os.listdir(test_file_path)
+        test_file_names = os.listdir("../test_data/blocks/")
         if "__init__.py" in test_file_names:
             test_file_names.remove("__init__.py")
 
         self.expected_roots: list = list()
         self.provers: list = list()
-        for path in test_file_names:
-            with open(test_file_path + path) as json_data:
+        for name in test_file_names:
+            with open("../test_data/blocks/" + name) as json_data:
                 test_dict = json.load(json_data)
                 tx_ids: list = test_dict["tx"]
 
-                self.expected_roots.append(test_dict["merkleroot"])
+                self.expected_roots.append("0x" + test_dict["merkleroot"])
                 # initiate manager included building tree
                 prover = BTCMerkleTree.from_big_hex_list(tx_ids)
                 self.provers.append(prover)
 
     def test_merkle_root_generate(self):
         for i in range(len(self.expected_roots)):
-            actual_root: str = self.provers[i].root.big_hex
-            self.assertEqual(self.expected_roots[i], actual_root)
+            actual_root: str = self.provers[i].root.hex_as_be
+            self.assertEqual(actual_root, self.expected_roots[i])
 
     def test_merkle_single_proof_fuzz(self):
         for i in range(len(self.provers)):
