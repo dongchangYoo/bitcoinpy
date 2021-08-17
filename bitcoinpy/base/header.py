@@ -3,16 +3,18 @@ from unittest import TestCase
 import json
 import hashlib
 
+from bitcoinpy.base.bytes import BTCBytes
+
 
 class Header:
     def __init__(self, version: bytes, prev_hash: bytes, merkle_root: bytes, _time: bytes, bits: bytes, nonce: bytes, height: int = 0):
         """ store elements in big endian bytes"""
-        self.__version: bytes = version
-        self.__prev_hash: bytes = prev_hash
-        self.__merkle_root: bytes = merkle_root
-        self.__bits: bytes = bits
-        self.__nonce: bytes = nonce
-        self.__time: bytes = _time
+        self.__version: BTCBytes = BTCBytes(version)
+        self.__prev_hash: BTCBytes = BTCBytes(prev_hash)
+        self.__merkle_root: BTCBytes = BTCBytes(merkle_root)
+        self.__bits: BTCBytes = BTCBytes(bits)
+        self.__nonce: BTCBytes = BTCBytes(nonce)
+        self.__time: BTCBytes = BTCBytes(_time)
         self._height: int = height
 
     def __repr__(self):
@@ -42,44 +44,44 @@ class Header:
         return cls(version_hex, prev_hash, mr, timestamp, bits, nonce, height)
 
     def serialize(self) -> bytes:
-        result = self.__version[::-1]
-        result += self.__prev_hash[::-1]
-        result += self.__merkle_root[::-1]
-        result += self.__time[::-1]
-        result += self.__bits[::-1]
-        result += self.__nonce[::-1]
+        result = self.__version.bytes_as_le
+        result += self.__prev_hash.bytes_as_le
+        result += self.__merkle_root.bytes_as_le
+        result += self.__time.bytes_as_le
+        result += self.__bits.bytes_as_le
+        result += self.__nonce.bytes_as_le
         return result
 
     @property
-    def version(self) -> int:
-        return int.from_bytes(self.__version, "big")
+    def version(self) -> BTCBytes:
+        return self.__version
 
     @property
-    def prev_hash(self) -> str:
-        return self.__prev_hash.hex()
+    def prev_hash(self) -> BTCBytes:
+        return self.__prev_hash
 
     @property
-    def merkle_root(self) -> str:
-        return self.__merkle_root.hex()
+    def merkle_root(self) -> BTCBytes:
+        return self.__merkle_root
 
     @property
     def time(self) -> int:
-        return int.from_bytes(self.__time, "big")
+        return self.__time.int
 
     @property
     def bits(self) -> int:
-        return int.from_bytes(self.__bits, "big")
+        return self.__bits.int
 
     @property
-    def hash(self) -> bytes:
+    def hash(self) -> BTCBytes:
         # after converting each element to little-endian bytes
         header_bytes = self.serialize()
-        # calc hash, and return big-endian hash
-        return hashlib.sha256(hashlib.sha256(header_bytes).digest()).digest()[::-1]
+        hash_ = hashlib.sha256(hashlib.sha256(header_bytes).digest()).digest()
+        return BTCBytes.from_little_bytes(hash_)
 
     @property
-    def nonce(self):
-        return int.from_bytes(self.__nonce, "big")
+    def nonce(self) -> int:
+        return self.__nonce.int
 
     @property
     def height(self) -> int:
@@ -95,68 +97,47 @@ class Header:
     def version(self, value: int):
         if isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
-        self.__version = value.to_bytes(4, byteorder="big")
+        self.__version = BTCBytes(value.to_bytes(4, byteorder="big"))
 
     @prev_hash.setter
     def prev_hash(self, value_big_hex: str):
-        if value_big_hex.startswith("0x"):
-            self.__prev_hash = bytes.fromhex(value_big_hex[2:])
-        else:
-            self.__prev_hash = bytes.fromhex(value_big_hex)
+        self.__prev_hash = BTCBytes.from_big_hex(value_big_hex)
 
     @merkle_root.setter
     def merkle_root(self, value_big_hex: str):
-        if value_big_hex.startswith("0x"):
-            self.__merkle_root = bytes.fromhex(value_big_hex[2:])
-        else:
-            self.__merkle_root = bytes.fromhex(value_big_hex)
+        self.__merkle_root = BTCBytes.from_big_hex(value_big_hex)
 
     @time.setter
     def time(self, value: int):
         if isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
-        self.__time = value.to_bytes(4, byteorder="big")
+        self.__time = BTCBytes(value.to_bytes(4, byteorder="big"))
 
     @bits.setter
     def bits(self, value: int):
         if isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
-        self.__bits = value.to_bytes(4, byteorder="big")
+        self.__bits = BTCBytes(value.to_bytes(4, byteorder="big"))
 
     @nonce.setter
     def nonce(self, value: int):
         if isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
-        self.__nonce = value.to_bytes(4, "big")
+        self.__nonce = BTCBytes(value.to_bytes(4, byteorder="big"))
 
     def raw_header_str(self) -> str:
         return self.serialize().hex()
 
     def to_dict(self) -> dict:
         ret = dict()
-        ret["versionHex"] = self.__version.hex()
-        ret["previousblockhash"] = self.__prev_hash.hex()
-        ret["merkleroot"] = self.__merkle_root.hex()
-        ret["time"] = int.from_bytes(self.__time, "big")
-        ret["bits"] = self.__bits.hex()
-        ret["nonce"] = int.from_bytes(self.__nonce, "big")
+        ret["versionHex"] = self.__version.hex_as_be
+        ret["previousblockhash"] = self.__prev_hash.hex_as_be
+        ret["merkleroot"] = self.__merkle_root.hex_as_be
+        ret["time"] = self.__time.int
+        ret["bits"] = self.__bits.int
+        ret["nonce"] = self.__nonce.int
         ret["height"] = self.height
         return ret
-
-    def raw_parse_by_element_name(self, element_name: str) -> bytes:
-        if element_name == "version":
-            return self.__version[::-1]
-        elif element_name == "prev_hash":
-            return self.__prev_hash[::-1]
-        elif element_name == "merkle_root":
-            return self.__merkle_root[::-1]
-        elif element_name == "time":
-            return self.__time[::-1]
-        elif element_name == "bits":
-            return self.__bits[::-1]
-        elif element_name == "nonce":
-            return self.__nonce[::-1]
-        raise Exception("Unknown element")
 
     def get_word_of_single_word(self, who: int) -> bytes:
         raw_header = self.serialize()
@@ -177,11 +158,11 @@ class HeaderTest(TestCase):
 
     def test_header_parsing_from_str(self):
         header = Header.from_raw_str(HeaderTest.block645120_str)
-        self.assertEqual(hex(header.version), "0x" + HeaderTest.block645120_dict["versionHex"])
-        self.assertEqual(header.prev_hash, "000000000000000000049a66ca322371799e1cb51d85c8937764ba6a2abb8ed9")
-        self.assertEqual(header.merkle_root, "2d8a7321a253d53a3987ed4a1a8f1182e9c6654fdf02ab8ec62362f52a76e1a3")
+        self.assertEqual(header.version.hex_as_be, "0x" + HeaderTest.block645120_dict["versionHex"])
+        self.assertEqual(header.prev_hash.hex_as_be, "0x000000000000000000049a66ca322371799e1cb51d85c8937764ba6a2abb8ed9")
+        self.assertEqual(header.merkle_root.hex_as_be, "0x2d8a7321a253d53a3987ed4a1a8f1182e9c6654fdf02ab8ec62362f52a76e1a3")
         self.assertEqual(header.time, HeaderTest.block645120_dict["time"])
-        self.assertEqual(hex(header.bits), "0x" + HeaderTest.block645120_dict["bits"])
+        self.assertEqual(header.bits, int(HeaderTest.block645120_dict["bits"], 16))
         self.assertEqual(header.nonce, HeaderTest.block645120_dict["nonce"])
 
     def test_header_parsing_from_dict(self):
