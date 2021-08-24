@@ -15,7 +15,7 @@ class Header:
         self.__bits: BTCBytes = BTCBytes(bits)
         self.__nonce: BTCBytes = BTCBytes(nonce)
         self.__time: BTCBytes = BTCBytes(_time)
-        self._height: int = height
+        self.__height: int = height
 
     def __repr__(self):
         ret = self.to_dict()
@@ -85,7 +85,7 @@ class Header:
 
     @property
     def height(self) -> int:
-        return self._height
+        return self.__height
 
     @property
     def target(self) -> int:
@@ -95,7 +95,7 @@ class Header:
 
     @version.setter
     def version(self, value: int):
-        if isinstance(value, int):
+        if not isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
         self.__version = BTCBytes(value.to_bytes(4, byteorder="big"))
 
@@ -109,21 +109,27 @@ class Header:
 
     @time.setter
     def time(self, value: int):
-        if isinstance(value, int):
+        if not isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
         self.__time = BTCBytes(value.to_bytes(4, byteorder="big"))
 
     @bits.setter
     def bits(self, value: int):
-        if isinstance(value, int):
+        if not isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
         self.__bits = BTCBytes(value.to_bytes(4, byteorder="big"))
 
     @nonce.setter
     def nonce(self, value: int):
-        if isinstance(value, int):
+        if not isinstance(value, int):
             raise Exception("Expected type: {}, but {}".format("int", type(value)))
         self.__nonce = BTCBytes(value.to_bytes(4, byteorder="big"))
+
+    @height.setter
+    def height(self, value: int):
+        if not isinstance(value, int):
+            raise Exception("Expected type: {}, but {}".format("int", type(value)))
+        self.__height = value
 
     def raw_header_str(self) -> str:
         return self.serialize().hex()
