@@ -5,7 +5,11 @@ import time
 from exceptions import *
 
 
-class LocalRegtestNode:
+class TestNode:
+    """
+    @ MUST enter directory path including binaries, bitcoind and bitcoin-cli.
+    @ the others are optional
+    """
     def __init__(self, src_path: str, rpc_port: int = 18443, rpc_user: str = "admin", rpc_password: str = "0000"):
         # remove last "/"
         src_path = src_path if src_path.endswith("/") else src_path + "/"
@@ -37,7 +41,7 @@ class LocalRegtestNode:
             for param in params:
                 cmd.append(param)
 
-        resp = LocalRegtestNode._execute(cmd)
+        resp = TestNode._execute(cmd)
         if resp.startswith("error: timeout on transient error"):
             raise RegtestNodeNotRunning
         return resp
@@ -67,7 +71,7 @@ class LocalRegtestNode:
         cmd += self.basic_cmd
         cmd.append("-daemon")
 
-        msg = LocalRegtestNode._execute(cmd)
+        msg = TestNode._execute(cmd)
         time.sleep(1)
         if msg.startswith("Error"):
             if reload:
@@ -179,7 +183,7 @@ class LocalRegtestNode:
 
 
 if __name__ == "__main__":
-    node = LocalRegtestNode("/Users/dc/research_project/bitcoin/")
+    node = TestNode("/Users/dc/research_project/bitcoin/")
     node.up(reload=True)
 
     result = node.loaded_wallet_list()
