@@ -13,8 +13,8 @@ class TestNode:
     def __init__(self, src_path: str, rpc_port: int = 18443, rpc_user: str = "admin", rpc_password: str = "0000"):
         # remove last "/"
         src_path = src_path if src_path.endswith("/") else src_path + "/"
-        self.bitcoind_path = src_path + "src/bitcoind"
-        self.cli_path = src_path + "src/bitcoin-cli"
+        self.bitcoind_path = src_path + "/bitcoind"
+        self.cli_path = src_path + "/bitcoin-cli"
 
         self.rpc_port = rpc_port
         self.rpc_user = rpc_user
