@@ -81,14 +81,7 @@ class TestNode:
             else:
                 raise RegtestAlreadyRunning
 
-        self.create_and_load_wallet("default")
-
-        addrs = self.get_address_by_label("coinbase")
-        if len(addrs) == 0:
-            self.coinbase_addr = self.new_address("coinbase")
-        else:
-            self.coinbase_addr = list(addrs.keys())[0]
-        return True
+        return self.create_and_load_wallet("default")
 
     def shutdown(self) -> bool:
         resp = self.build_and_request("stop")
@@ -110,11 +103,16 @@ class TestNode:
 
     def create_and_load_wallet(self, wallet_name: str):
         resp = self.build_and_request("createwallet", [wallet_name])
+        try:
+            resp_dict = json.loads(resp)
+            if "name" in resp_dict and "warning" in resp_dict:
+                return self.load_wallet(wallet_name)
+        except json.JSONDecodeError as e:
+            if resp.startswith("error code: -4"):
+                return self.load_wallet(wallet_name)
+            else:
+                raise UnknownException
 
-        if resp.startswith("error code: -4"):
-            return self.load_wallet(wallet_name)
-
-        raise UnknownException
 
     def unload_wallet(self, wallet_name: str):
         resp = self.build_and_request("unloadwallet", [wallet_name])
@@ -133,6 +131,13 @@ class TestNode:
             for wallet in loaded_wallets:
                 if wallet != wallet_name:
                     self.unload_wallet(wallet)
+
+        addrs = self.get_address_by_label("coinbase")
+        if len(addrs) == 0:
+            self.coinbase_addr = self.new_address("coinbase")
+        else:
+            self.coinbase_addr = list(addrs.keys())[0]
+
         return True
 
     def loaded_wallet_list(self):
