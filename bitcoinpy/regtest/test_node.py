@@ -42,6 +42,7 @@ class TestNode:
                 cmd.append(param)
 
         resp = TestNode._execute(cmd)
+
         if resp.startswith("error: timeout on transient error"):
             raise RegtestNodeNotRunning
         return resp
@@ -77,7 +78,7 @@ class TestNode:
             if reload:
                 self.shutdown()
                 time.sleep(0.5)
-                self.up()
+                self.up(reload)
             else:
                 raise RegtestAlreadyRunning
 
@@ -185,19 +186,3 @@ class TestNode:
 
         resp = self.build_and_request("listunspent", [str(minconf), str(9999999)])
         return json.loads(resp)
-
-
-if __name__ == "__main__":
-    node = TestNode("/Users/dc/research_project/bitcoin/")
-    node.up(reload=True)
-
-    result = node.loaded_wallet_list()
-    print(result)
-
-    node.create_and_load_wallet("test")
-    result = node.loaded_wallet_list()
-    print(result)
-
-
-
-
