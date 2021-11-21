@@ -2,7 +2,7 @@ import json
 import subprocess
 import time
 
-from exceptions import *
+from .exceptions import *
 
 
 class TestNode:
