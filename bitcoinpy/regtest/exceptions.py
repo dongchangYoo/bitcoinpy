@@ -34,5 +34,9 @@ class InvalidParameter(Exception):
     pass
 
 
+class InvalidParameterType(Exception):
+    pass
+
+
 class NoCoinbase(Exception):
     pass
