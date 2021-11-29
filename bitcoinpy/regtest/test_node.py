@@ -148,11 +148,16 @@ class TestBase:
         resp = self.build_and_request("getbalance")
         return json.loads(resp)
 
-    def get_utxo(self, minconf: int = 6):
+    def get_utxo(self, minconf: int = 6, min_amount: float = 1.0):
         if minconf < 1:
             raise InvalidParameter
 
-        resp = self.build_and_request("listunspent", [str(minconf), str(9999999)])
+        opt_str = json.dumps({
+            "minimumAmount": str(min_amount)
+        })
+
+        resp = self.build_and_request("listunspent", [str(minconf), str(9999999), str([]), "false", opt_str])
+        # resp = self.build_and_request("listunspent", [str(minconf), str(9999999)])
         return json.loads(resp)
 
     def get_address_info(self, address: str):
@@ -185,9 +190,20 @@ class TestBase:
         resp = self.build_and_request("testmempoolaccept", [param, str(maxfeerate)])
 
         resp_list = json.loads(resp)
-        
-        return resp_list[0]["allowed"] 
-        
+        return resp_list[0]
+
+    def decode_raw_transaction(self, serialized_raw_tx: str):
+        resp = self.build_and_request("decoderawtransaction", [serialized_raw_tx])
+        return json.loads(resp)
+
+    def signrawtransactionwithwallet(self, hexstring: str):
+        resp = self.build_and_request("signrawtransactionwithwallet", [hexstring])
+        return json.loads(resp)
+
+    def get_block_count(self):
+        resp = self.build_and_request("getblockcount")
+        return json.loads(resp)
+
 class TestNode(TestBase):
     """
     @ MUST enter directory path including binaries, bitcoind and bitcoin-cli.
