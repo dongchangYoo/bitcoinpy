@@ -158,7 +158,6 @@ class TestBase:
 
         resp = self.build_and_request("listunspent", [str(minconf), str(9999999), str([]), "false", opt_str])
         # resp = self.build_and_request("listunspent", [str(minconf), str(9999999)])
-<<<<<<< HEAD
         return json.loads(resp)
 
     def get_address_info(self, address: str):
@@ -223,73 +222,6 @@ class TestBase:
     def send_raw_transaction(self, tx_hex: str):
         return self.build_and_request("sendrawtransaction", [tx_hex, "0"])
 
-=======
-        return json.loads(resp)
-
-    def get_address_info(self, address: str):
-        resp = self.build_and_request("getaddressinfo", [address])
-        # TODO error handling?
-        return json.loads(resp)
-
-    def send_to(self, _to: str, amount: Union[float, int]):
-        getcontext().prec = 8
-        if isinstance(amount, float):
-            btc = Decimal(amount) * Decimal(1)
-        elif isinstance(amount, int):
-            btc = Decimal(amount) * Decimal(0.00000001)
-        else:
-            raise InvalidParameterType
-
-        params = list()
-        params.append(_to)
-        params.append(str(btc))
-
-        # tx_id
-        return self.build_and_request("sendtoaddress", params)
-
-    def get_transaction_with_txid_and_blockhash(self, tx_id: str, block_hash: str) -> dict:
-        resp = self.build_and_request("getrawtransaction", [tx_id, "true", block_hash])
-        return json.loads(resp)
-
-    def test_mempool_accept(self, rawtx: str, maxfeerate: int = 1000):
-        param = json.dumps([rawtx])
-        resp = self.build_and_request("testmempoolaccept", [param, str(maxfeerate)])
-
-        resp_list = json.loads(resp)
-        return resp_list[0]
-
-    def decode_raw_transaction(self, serialized_raw_tx: str):
-        resp = self.build_and_request("decoderawtransaction", [serialized_raw_tx])
-        return json.loads(resp)
-
-    def signrawtransactionwithwallet(self, hexstring: str):
-        resp = self.build_and_request("signrawtransactionwithwallet", [hexstring])
-        return json.loads(resp)
-
-    def get_block_count(self):
-        resp = self.build_and_request("getblockcount")
-        return json.loads(resp)
-
-    def create_raw_transaction(self, inputs: list, outputs: list):
-        input_str = json.dumps(inputs)
-        out_str = json.dumps(outputs)
-
-        return self.build_and_request("createrawtransaction", [input_str, out_str])
-
-    def sign_raw_transaction_with_wallet(self, tx_hex: str):
-        resp = self.build_and_request("signrawtransactionwithwallet", [tx_hex])
-
-        resp_json = json.loads(resp)
-        assert resp_json["complete"]
-        assert "errors" not in resp_json
-
-        return resp_json
-
-    def send_raw_transaction(self, tx_hex: str):
-        resp = self.build_and_request("sendrawtransaction", [tx_hex])
-        return json.loads(resp)
-
->>>>>>> ac93b6626c199d15d6f4a330569581d93cc18c8c
 
 class TestNode(TestBase):
     """
@@ -383,7 +315,6 @@ class TestNode(TestBase):
         else:
             raise InvalidParameterType
 
-<<<<<<< HEAD
         resp = self.get_utxo(1, min_amount=10.0)
         if len(resp) == 0:
             raise Exception("There is no utxo")
@@ -396,12 +327,3 @@ class TestNode(TestBase):
         }
 
         return self.send_new_transaction([unspent_input], [{_to: str(btc)}])
-=======
-        utxo = self.get_utxo(1, min_amount=10.0)[-1]
-        unspent_txid = utxo["txid"]
-        unspent_vout = utxo["vout"]
-
-        inputs = [{"txid": unspent_txid, "vout": unspent_vout}]
-
-        return self.send_new_transaction(inputs, [{_to: 1}])
->>>>>>> ac93b6626c199d15d6f4a330569581d93cc18c8c
