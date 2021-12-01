@@ -204,6 +204,26 @@ class TestBase:
         resp = self.build_and_request("getblockcount")
         return json.loads(resp)
 
+    def create_raw_transaction(self, inputs: list, outputs: list):
+        input_str = json.dumps(inputs)
+        out_str = json.dumps(outputs)
+
+        return self.build_and_request("createrawtransaction", [input_str, out_str])
+
+    def sign_raw_transaction_with_wallet(self, tx_hex: str):
+        resp = self.build_and_request("signrawtransactionwithwallet", [tx_hex])
+
+        resp_json = json.loads(resp)
+        assert resp_json["complete"]
+        assert "errors" not in resp_json
+
+        return resp_json
+
+    def send_raw_transaction(self, tx_hex: str):
+        resp = self.build_and_request("sendrawtransaction", [tx_hex])
+        return json.loads(resp)
+
+
 class TestNode(TestBase):
     """
     @ MUST enter directory path including binaries, bitcoind and bitcoin-cli.
@@ -281,5 +301,25 @@ class TestNode(TestBase):
             self.coinbase_addr = list(addrs.keys())[0]
         return self.coinbase_addr
 
+    def send_new_transaction(self, inputs: list, outputs: list):
+        raw_tx = self.create_raw_transaction(inputs, outputs)
+        signed_tx = self.sign_raw_transaction_with_wallet(raw_tx)
+        result = self.send_raw_transaction(signed_tx["hex"])
+        return result
 
+    def custuomized_send_to(self, _to: str, amount: Union[float, int]):
+        getcontext().prec = 8
+        if isinstance(amount, float):
+            btc = Decimal(amount) * Decimal(1)
+        elif isinstance(amount, int):
+            btc = Decimal(amount) * Decimal(0.00000001)
+        else:
+            raise InvalidParameterType
 
+        utxo = self.get_utxo(1, min_amount=10.0)[-1]
+        unspent_txid = utxo["txid"]
+        unspent_vout = utxo["vout"]
+
+        inputs = [{"txid": unspent_txid, "vout": unspent_vout}]
+
+        return self.send_new_transaction(inputs, [{_to: 1}])
