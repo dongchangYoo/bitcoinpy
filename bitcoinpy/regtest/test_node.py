@@ -306,6 +306,7 @@ class TestNode(TestBase):
         result = self.send_raw_transaction(signed_tx["hex"])
         return result
 
+    # do not use. it is not tested
     def custuomized_send_to(self, _to: str, amount: Union[float, int]):
         getcontext().prec = 8
         if isinstance(amount, float):
